@@ -27,7 +27,7 @@ RUN set -ex \
     )" \
     && apk add --virtual .python-rundeps $runDeps \
     && apk del .build-deps \
-    && apk add libjpeg-turbo pcre
+    && apk add libjpeg-turbo pcre libffi
 RUN apk add --no-cache postgresql-client
 RUN mkdir /code/
 WORKDIR /code/

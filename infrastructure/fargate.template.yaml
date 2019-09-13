@@ -1,0 +1,104 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TechStarter bakery fargate service
+
+Parameters:
+  
+  EnvironmentName:
+    Description: the name of your environment
+    Type: String
+    Default: dev
+    
+  BakeryVersion:
+    Description: docker tag reference of the bakery application version
+    Type: String
+    Default: 0.1.0
+    
+Resources:
+
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: control network level access to the bakery ecs service
+      GroupName: !Sub ${EnvironmentName}-ecs-service
+      SecurityGroupIngress: 
+        - SourceSecurityGroupId:
+            Fn::ImportValue:
+              !Sub ${EnvironmentName}-bakery-loadbalancer-securitygroup
+          Description: http access from the loadbalancer
+          FromPort: 0
+          IpProtocol: TCP
+          ToPort: 0
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-bakery-ecs-service
+      VpcId: 
+        Fn::ImportValue:
+          !Sub ${EnvironmentName}-bakery-vpcid
+          
+  PostgresIngressAccess:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId:
+        Fn::ImportValue:
+          !Sub ${EnvironmentName}-bakery-postgres-securitygroup
+      Description: Allow access to the postgres database from the bakery application
+      FromPort: 0
+      IpProtocol: TCP
+      SourceSecurityGroupId: !Ref SecurityGroup
+      ToPort: 0
+  
+  ExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          -
+            Effect: Allow
+            Principal: 
+              Service: ecs-tasks.amazonaws.com
+            Action: sts:AssumeRole
+          -
+            Effect: Allow
+            Principal: 
+              Service: ssm.amazonaws.com
+            Action: sts:AssumeRole
+      Path: /
+      ManagedPolicyArns: 
+        - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+  
+  Policy:
+    Type: AWS::IAM::Policy
+    Properties:
+      PolicyName: !Sub ${EnvironmentName}-ssm-get-parameters
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          -
+            Effect: Allow
+            Action:
+              - ssm:GetParameters
+            Resource:
+              - !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/bakery/postgres/url 
+      Roles:
+        - !Ref ExecutionRole
+  
+  LogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties: 
+      LogGroupName: !Sub ${EnvironmentName}-bakery
+      RetentionInDays: 7
+    
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      ContainerDefinitions: 
+        - Name: bakery
+          PortMappings: 
+            - ContainerPort: 8000
+      ExecutionRoleArn: !GetAtt ExecutionRole.Arn
+      NetworkMode: awsvpc
+      RequiresCompatibilities: 
+        - FARGATE
+
+  # Service

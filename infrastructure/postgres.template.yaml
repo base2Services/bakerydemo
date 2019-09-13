@@ -1,0 +1,34 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TechStarter bakery postgres RDS instance
+
+Parameters:
+  
+  EnvironmentName:
+    Description: the name of your environment
+    Type: String
+    Default: dev
+    
+Resources:
+  
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: control network level access to the bakery database
+      GroupName: !Sub ${EnvironmentName}-postgres
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-bakery-postgres
+      VpcId: 
+        Fn::ImportValue: !Sub ${EnvironmentName}-bakery-vpcid
+        
+  # Subnet Group
+  # Postgres RDS Database
+          
+Outputs:
+      
+  SecurityGroup:
+    Description: loadbalancer security group id
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-bakery-postgres-securitygroup

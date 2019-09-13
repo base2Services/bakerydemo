@@ -1,0 +1,48 @@
+---
+AWSTemplateFormatVersion: '2010-09-09'
+Description: TechStarter bakery application loadbalancer
+
+Parameters:
+  
+  EnvironmentName:
+    Description: the name of your environment
+    Type: String
+    Default: dev
+    
+Resources:
+  
+  SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties: 
+      GroupDescription: control network level access to the bakery loadbalancer
+      GroupName: !Sub ${EnvironmentName}-loadbalancer
+      SecurityGroupIngress: 
+        - CidrIp: 0.0.0.0/0
+          Description: http access
+          FromPort: 80
+          IpProtocol: TCP
+          ToPort: 80
+      Tags: 
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-bakery-loadbalancer
+      VpcId: 
+        Fn::ImportValue: 
+          !Sub ${EnvironmentName}-bakery-vpcid
+          
+  # Loadbalancer        
+  # Target Group
+  # Http Listener  
+      
+Outputs:
+  
+  TargetGroup:
+    Description: targetgroup for the bakery ecs service
+    Value: !Ref TargetGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-bakery-targetgroup
+      
+  SecurityGroup:
+    Description: loadbalancer security group id
+    Value: !Ref SecurityGroup
+    Export:
+      Name: !Sub ${EnvironmentName}-bakery-loadbalancer-securitygroup
